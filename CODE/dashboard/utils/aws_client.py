@@ -1,5 +1,6 @@
 import json
 import logging
+# request libraby will be used to send api calls 
 import requests
 from typing import Dict, Any, List
 from config import settings
@@ -10,6 +11,8 @@ class AWSClient:
         self.api_url = settings.API_GATEWAY_URL
         if not self.api_url:
             logger.warning("API_GATEWAY_URL is not set. API calls will fail.")
+            # this call api is the core utility private function of this code , this function is the core of entire project , THIS METHOD WILL BE RESPONSIBLE FOR ALL THE AWS ACTIONS
+            
     def _call_api(self, action: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         if not self.api_url:
             return {"error": "API Gateway URL is not configured in .env or settings."}
@@ -21,6 +24,7 @@ class AWSClient:
             payload.update(params)
         try:
             logger.info(f"Calling API Gateway: {action}")
+            # THE line that fires the request across the border — this is the actual moment your frontend reaches out to AWS. 
             response = requests.post(
                 self.api_url,
                 json=payload,
@@ -47,6 +51,7 @@ class AWSClient:
         except Exception as e:
             logger.error(f"Unexpected error: {str(e)}")
             return {"error": str(e)}
+
     def get_caller_identity(self) -> Dict[str, Any]:
         res = self._call_api("ping")
         if "error" in res:
