@@ -1,7 +1,10 @@
 import json
 import logging
-# request libraby will be used to send api calls 
+# request libraby will be used to send api calls
 import requests
+import boto3
+from botocore.auth import SigV4Auth
+from botocore.awsrequest import AWSRequest
 from typing import Dict, Any, List
 from config import settings
 logger = logging.getLogger(__name__)
@@ -12,7 +15,20 @@ class AWSClient:
         if not self.api_url:
             logger.warning("API_GATEWAY_URL is not set. API calls will fail.")
             # this call api is the core utility private function of this code , this function is the core of entire project , THIS METHOD WILL BE RESPONSIBLE FOR ALL THE AWS ACTIONS
-            
+
+    def _signed_headers(self, body: str) -> Dict[str, str]:
+        # The API Gateway method now requires AWS_IAM auth (see terraform/main.tf), so
+        # every request has to be SigV4-signed with the caller's own AWS credentials
+        # (picked up the same way boto3 normally does: profile, env vars, or role).
+        session = boto3.Session(profile_name=settings.AWS_PROFILE) if settings.AWS_PROFILE else boto3.Session()
+        credentials = session.get_credentials()
+        if credentials is None:
+            raise RuntimeError("No AWS credentials found to sign the API request.")
+        request = AWSRequest(method="POST", url=self.api_url, data=body,
+                              headers={"Content-Type": "application/json"})
+        SigV4Auth(credentials.get_frozen_credentials(), "execute-api", self.region).add_auth(request)
+        return dict(request.headers)
+
     def _call_api(self, action: str, params: Dict[str, Any] = None) -> Dict[str, Any]:
         if not self.api_url:
             return {"error": "API Gateway URL is not configured in .env or settings."}
@@ -22,14 +38,16 @@ class AWSClient:
         }
         if params:
             payload.update(params)
+        body = json.dumps(payload)
         try:
             logger.info(f"Calling API Gateway: {action}")
-            # THE line that fires the request across the border — this is the actual moment your frontend reaches out to AWS. 
+            headers = self._signed_headers(body)
+            # THE line that fires the request across the border — this is the actual moment your frontend reaches out to AWS.
             response = requests.post(
                 self.api_url,
-                json=payload,
-                headers={"Content-Type": "application/json"},
-                timeout=30  
+                data=body,
+                headers=headers,
+                timeout=30
             )
             response.raise_for_status()
             data = response.json()

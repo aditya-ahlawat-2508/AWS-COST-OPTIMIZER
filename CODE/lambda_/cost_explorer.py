@@ -67,19 +67,19 @@ def get_cost_breakdown(days: int = 30) -> dict:
         Granularity="DAILY",
         Metrics=["UnblendedCost"],
     )
-   # What the comprehension is doing, written as a normal loop:
-daily_trend = []                                    # start with an empty list
-for r in daily_resp.get("ResultsByTime", []):       # walk through each day
-    daily_trend.append({                            # build one entry and add it
-        "date": r["TimePeriod"]["Start"],
-        "cost": round(float(r["Total"]["UnblendedCost"]["Amount"]), 4)
-    })
-#     # daily_trend = [
-#     {"date": "2025-06-25", "cost": 1.2},
-#     {"date": "2025-06-26", "cost": 0.95},
-#     {"date": "2025-06-27", "cost": 2.1},
-#     # ...
-# ]
+    # What the comprehension is doing, written as a normal loop:
+    daily_trend = []                                    # start with an empty list
+    for r in daily_resp.get("ResultsByTime", []):       # walk through each day
+        daily_trend.append({                            # build one entry and add it
+            "date": r["TimePeriod"]["Start"],
+            "cost": round(float(r["Total"]["UnblendedCost"]["Amount"]), 4)
+        })
+    #     # daily_trend = [
+    #     {"date": "2025-06-25", "cost": 1.2},
+    #     {"date": "2025-06-26", "cost": 0.95},
+    #     {"date": "2025-06-27", "cost": 2.1},
+    #     # ...
+    # ]
     return {
         "total_cost": round(total_cost, 2),
         "currency": currency,

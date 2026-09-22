@@ -24,7 +24,7 @@ def lambda_handler(event, context):
     region = event.get("region", DEFAULT_REGION)
     params = event.get("params", {})
     try:
-        body = json.loads(event.get("body", "{}"))
+        body = json.loads(event.get("body") or "{}")
         if not body and "action" in event:
             body = event
         action = body.get("action")

@@ -171,7 +171,11 @@ resource "aws_api_gateway_method" "post_optimize" {
   rest_api_id   = aws_api_gateway_rest_api.cost_api.id
   resource_id   = aws_api_gateway_resource.optimize.id
   http_method   = "POST"
-  authorization = "NONE"
+  # Was "NONE": anyone who found the URL could call terminate_ec2 / delete_s3 /
+  # delete_lambda / delete_nat_gateway with no credentials at all. AWS_IAM requires
+  # the caller to SigV4-sign the request with valid IAM credentials that have
+  # execute-api:Invoke on this method, so an anonymous POST now gets 403.
+  authorization = "AWS_IAM"
 }
 
 resource "aws_api_gateway_integration" "lambda_integration" {
