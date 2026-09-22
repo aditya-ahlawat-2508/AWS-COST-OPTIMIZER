@@ -11,6 +11,7 @@ from cryptography.hazmat.primitives.asymmetric import rsa
 
 ROOT = pathlib.Path(__file__).resolve().parents[2]  # cloudwise/
 API_DIR = ROOT / "apps" / "api"
+sys.path.insert(0, str(ROOT))
 sys.path.insert(0, str(API_DIR))
 
 TEST_DB_NAME = "cloudwise_test"
