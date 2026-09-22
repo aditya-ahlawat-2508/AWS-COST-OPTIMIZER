@@ -51,6 +51,16 @@ class FindingOut(BaseModel):
     status: str
 
 
+class CopilotChatRequest(BaseModel):
+    message: str = Field(min_length=1, max_length=4000)
+
+
+class CopilotChatResponse(BaseModel):
+    text: str
+    tool_calls: List[str]
+    grounding_warnings: List[str]
+
+
 class SpendByGroup(BaseModel):
     key: str
     cost: float
