@@ -61,6 +61,19 @@ class CopilotChatResponse(BaseModel):
     grounding_warnings: List[str]
 
 
+class ChangeRequestOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    finding_id: uuid.UUID
+    action_type: str
+    status: str
+    rollback_plan: Optional[str]
+    execution_result: Optional[dict]
+    executed_at: Optional[datetime]
+    created_at: datetime
+
+
 class SpendByGroup(BaseModel):
     key: str
     cost: float

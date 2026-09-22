@@ -32,6 +32,11 @@ CREATE TABLE aws_accounts (
     aws_account_id  TEXT NOT NULL,
     role_arn        TEXT NOT NULL,
     external_id     TEXT NOT NULL,
+    -- Opt-in only (infra/onboarding/actions-role.yaml). NULL means this
+    -- account has not enabled automation; services/actions refuses to run
+    -- anything against it until both are set.
+    actions_role_arn    TEXT,
+    actions_external_id TEXT,
     label           TEXT,
     status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'connected', 'error')),
     last_scanned_at TIMESTAMPTZ,

@@ -40,6 +40,8 @@ class AWSAccount(Base):
     aws_account_id: Mapped[str] = mapped_column(String, nullable=False)
     role_arn: Mapped[str] = mapped_column(String, nullable=False)
     external_id: Mapped[str] = mapped_column(String, nullable=False)
+    actions_role_arn: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    actions_external_id: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     label: Mapped[Optional[str]] = mapped_column(String, nullable=True)
     status: Mapped[str] = mapped_column(String, default="pending")
     last_scanned_at: Mapped[Optional[datetime]] = mapped_column(nullable=True)
