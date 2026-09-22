@@ -16,7 +16,9 @@ SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expi
 
 @contextmanager
 def org_scoped_session(
-    org_id: Optional[str] = None, allow_provisioning_lookup: bool = False
+    org_id: Optional[str] = None,
+    allow_provisioning_lookup: bool = False,
+    allow_billing_lookup: bool = False,
 ) -> Generator[Session, None, None]:
     """Open a DB session whose transaction carries the tenant context that the
     Postgres RLS policies in db/init.sql check on every row. This is the
@@ -34,6 +36,10 @@ def org_scoped_session(
         session.execute(
             text("SELECT set_config('app.allow_provisioning_lookup', :flag, true)"),
             {"flag": "true" if allow_provisioning_lookup else "false"},
+        )
+        session.execute(
+            text("SELECT set_config('app.allow_billing_lookup', :flag, true)"),
+            {"flag": "true" if allow_billing_lookup else "false"},
         )
         yield session
         session.commit()

@@ -6,6 +6,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from .. import billing
 from ..deps import get_current_user, get_db
 from ..models import AWSAccount, User
 from ..schemas import AWSAccountCreate, AWSAccountOut, ScanResult
@@ -24,6 +25,19 @@ def list_accounts(db: Session = Depends(get_db), user: User = Depends(get_curren
 def create_account(
     payload: AWSAccountCreate, db: Session = Depends(get_db), user: User = Depends(get_current_user)
 ) -> AWSAccount:
+    entitlement = billing.get_entitlement(db, user.org_id)
+    max_accounts = entitlement["max_accounts"]
+    if max_accounts is not None:
+        current_count = len(db.execute(select(AWSAccount).where(AWSAccount.org_id == user.org_id)).all())
+        if current_count >= max_accounts:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail=(
+                    f"Your {entitlement['tier']} plan allows up to {max_accounts} connected AWS account(s). "
+                    "Upgrade to connect more."
+                ),
+            )
+
     account = AWSAccount(org_id=user.org_id, **payload.model_dump())
     db.add(account)
     db.flush()

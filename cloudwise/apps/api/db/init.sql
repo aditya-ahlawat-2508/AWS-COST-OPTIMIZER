@@ -78,6 +78,20 @@ CREATE TABLE change_requests (
     created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
+-- One row per org. No row at all means "free tier" — see
+-- app/billing.py:get_entitlement, which treats a missing subscription the
+-- same as an explicit free-tier one rather than erroring.
+CREATE TABLE subscriptions (
+    org_id                 UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
+    tier                   TEXT NOT NULL DEFAULT 'free' CHECK (tier IN ('free', 'starter', 'growth')),
+    status                 TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'trialing', 'past_due', 'canceled')),
+    stripe_customer_id     TEXT UNIQUE,
+    stripe_subscription_id TEXT UNIQUE,
+    current_period_end     TIMESTAMPTZ,
+    created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Normalized daily spend, aggregated from CUR/Data Exports by
 -- services/cur/loader.py. One row per (org, account, day, service).
 CREATE TABLE spend_daily (
@@ -118,6 +132,8 @@ ALTER TABLE audit_log       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log       FORCE ROW LEVEL SECURITY;
 ALTER TABLE spend_daily     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE spend_daily     FORCE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions   ENABLE ROW LEVEL SECURITY;
+ALTER TABLE subscriptions   FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY org_isolation_users ON users
     USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
@@ -142,6 +158,18 @@ CREATE POLICY org_isolation_audit_log ON audit_log
 CREATE POLICY org_isolation_spend_daily ON spend_daily
     USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
+
+CREATE POLICY org_isolation_subscriptions ON subscriptions
+    USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
+    WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
+
+-- Stripe webhooks reference a stripe_customer_id, not an org_id, so
+-- resolving a subscription-lifecycle event has the same bootstrap problem
+-- as login: look it up before the org context is known. Only app/billing.py
+-- sets this flag, and only for that one lookup.
+CREATE POLICY allow_billing_lookup ON subscriptions
+    FOR SELECT
+    USING (current_setting('app.allow_billing_lookup', true) = 'true');
 
 -- The one deliberate bypass: provisioning has to look a user up by
 -- clerk_user_id before it knows their org_id (that's the whole point of

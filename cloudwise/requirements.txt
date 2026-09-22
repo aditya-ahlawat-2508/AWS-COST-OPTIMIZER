@@ -2,3 +2,4 @@
 # used both standalone and transitively by apps/api (see apps/api/requirements.txt).
 boto3>=1.34.0
 anthropic>=0.40.0
+stripe>=10.0.0

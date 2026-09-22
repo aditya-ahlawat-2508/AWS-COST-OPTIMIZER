@@ -74,6 +74,22 @@ class ChangeRequestOut(BaseModel):
     created_at: datetime
 
 
+class CheckoutRequest(BaseModel):
+    tier: str = Field(pattern=r"^(starter|growth)$")
+    success_url: str
+    cancel_url: str
+
+
+class CheckoutResponse(BaseModel):
+    checkout_url: str
+
+
+class EntitlementOut(BaseModel):
+    tier: str
+    status: str
+    max_accounts: Optional[int]
+
+
 class SpendByGroup(BaseModel):
     key: str
     cost: float

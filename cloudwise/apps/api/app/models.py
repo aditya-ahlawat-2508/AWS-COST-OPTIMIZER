@@ -83,6 +83,21 @@ class ChangeRequest(Base):
     created_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
+class Subscription(Base):
+    __tablename__ = "subscriptions"
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), primary_key=True
+    )
+    tier: Mapped[str] = mapped_column(String, default="free")
+    status: Mapped[str] = mapped_column(String, default="active")
+    stripe_customer_id: Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True)
+    stripe_subscription_id: Mapped[Optional[str]] = mapped_column(String, unique=True, nullable=True)
+    current_period_end: Mapped[Optional[datetime]] = mapped_column(nullable=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
 class SpendDaily(Base):
     __tablename__ = "spend_daily"
 
