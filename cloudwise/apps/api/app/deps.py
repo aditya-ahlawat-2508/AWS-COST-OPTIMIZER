@@ -1,34 +1,35 @@
-import uuid
 from typing import Generator
 
+import jwt as pyjwt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
-from jwt import PyJWTError
 from sqlalchemy.orm import Session
 
-from . import security
+from . import clerk_auth
 from .database import org_scoped_session
 from .models import User
+from .provisioning import get_or_create_org_and_user
 
 bearer_scheme = HTTPBearer()
 
 
-def get_token_payload(creds: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> dict:
+def get_current_identity(creds: HTTPAuthorizationCredentials = Depends(bearer_scheme)) -> dict:
     try:
-        return security.decode_access_token(creds.credentials)
-    except PyJWTError:
+        payload = clerk_auth.verify_clerk_token(creds.credentials)
+        return clerk_auth.extract_identity(payload)
+    except clerk_auth.NoActiveOrganization as exc:
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail=str(exc))
+    except pyjwt.PyJWTError:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid or expired token")
 
 
-def get_db(payload: dict = Depends(get_token_payload)) -> Generator[Session, None, None]:
-    # Every authenticated request's DB session is scoped to the org_id carried
-    # in its own JWT — this is what makes the RLS policies in db/init.sql bite.
-    with org_scoped_session(org_id=payload["org_id"]) as session:
-        yield session
-
-
-def get_current_user(payload: dict = Depends(get_token_payload), db: Session = Depends(get_db)) -> User:
-    user = db.get(User, uuid.UUID(payload["sub"]))
-    if user is None:
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="User not found")
+def get_current_user(identity: dict = Depends(get_current_identity)) -> User:
+    # First authenticated request from a Clerk user/org CloudWise hasn't seen
+    # creates the org + user row — there is no separate signup endpoint.
+    _org, user = get_or_create_org_and_user(identity)
     return user
+
+
+def get_db(user: User = Depends(get_current_user)) -> Generator[Session, None, None]:
+    with org_scoped_session(org_id=str(user.org_id)) as session:
+        yield session

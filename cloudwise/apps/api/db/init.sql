@@ -5,16 +5,23 @@
 CREATE EXTENSION IF NOT EXISTS pgcrypto;
 
 CREATE TABLE organizations (
-    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    name        TEXT NOT NULL,
-    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    -- Clerk Organization id (e.g. "org_2abc..."). Clerk is the system of
+    -- record for identity; this column is how we map its org to our RLS-scoped
+    -- internal UUID. Auto-provisioned on first authenticated request from a
+    -- member of a Clerk org CloudWise hasn't seen before — see app/provisioning.py.
+    clerk_org_id   TEXT UNIQUE,
+    name           TEXT NOT NULL,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 CREATE TABLE users (
     id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id          UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    -- Clerk user id (e.g. "user_2abc..."). No password_hash here: Clerk owns
+    -- credentials entirely, CloudWise never sees or stores a password.
+    clerk_user_id   TEXT NOT NULL UNIQUE,
     email           TEXT NOT NULL UNIQUE,
-    password_hash   TEXT NOT NULL,
     role            TEXT NOT NULL DEFAULT 'owner' CHECK (role IN ('owner', 'admin', 'approver', 'viewer')),
     created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
 );
@@ -103,13 +110,14 @@ CREATE POLICY org_isolation_audit_log ON audit_log
     USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
 
--- The one deliberate bypass: user registration/login has to look a user up by
--- email before it knows their org_id (that's the whole point of login). This
--- policy allows SELECT-by-email with no org context, but only ever from the
--- auth routes, and never for any other table.
-CREATE POLICY allow_login_lookup ON users
+-- The one deliberate bypass: provisioning has to look a user up by
+-- clerk_user_id before it knows their org_id (that's the whole point of
+-- Clerk-token-to-org resolution on first sight of a user). This policy
+-- allows that one SELECT with no org context, but only from
+-- app/provisioning.py, and never for any other table.
+CREATE POLICY allow_provisioning_lookup ON users
     FOR SELECT
-    USING (current_setting('app.allow_login_lookup', true) = 'true');
+    USING (current_setting('app.allow_provisioning_lookup', true) = 'true');
 
 -- FORCE ROW LEVEL SECURITY only binds the table owner — Postgres superusers
 -- (and anyone with BYPASSRLS) ignore RLS entirely no matter what. So the app

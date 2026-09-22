@@ -7,12 +7,16 @@ from sqlalchemy.orm import Session, sessionmaker
 from .config import settings
 
 engine = create_engine(settings.database_url, pool_pre_ping=True)
-SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False)
+# expire_on_commit=False: provisioning.py commits and closes its own session
+# before handing the User object back to deps.py, which reads its attributes
+# afterward — the default (expire on commit) would try to lazily reload them
+# from that already-closed session and raise DetachedInstanceError.
+SessionLocal = sessionmaker(bind=engine, autoflush=False, autocommit=False, expire_on_commit=False)
 
 
 @contextmanager
 def org_scoped_session(
-    org_id: Optional[str] = None, allow_login_lookup: bool = False
+    org_id: Optional[str] = None, allow_provisioning_lookup: bool = False
 ) -> Generator[Session, None, None]:
     """Open a DB session whose transaction carries the tenant context that the
     Postgres RLS policies in db/init.sql check on every row. This is the
@@ -28,8 +32,8 @@ def org_scoped_session(
                 text("SELECT set_config('app.current_org_id', :org_id, true)"), {"org_id": str(org_id)}
             )
         session.execute(
-            text("SELECT set_config('app.allow_login_lookup', :flag, true)"),
-            {"flag": "true" if allow_login_lookup else "false"},
+            text("SELECT set_config('app.allow_provisioning_lookup', :flag, true)"),
+            {"flag": "true" if allow_provisioning_lookup else "false"},
         )
         yield session
         session.commit()
