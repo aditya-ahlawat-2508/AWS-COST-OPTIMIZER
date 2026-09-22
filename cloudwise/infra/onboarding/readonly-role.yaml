@@ -1,0 +1,124 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudWise read-only access. Creates an IAM role that CloudWise's platform
+  account can assume (via STS AssumeRole, short-lived, credentials held only
+  in memory) to scan this account for cost-saving findings. Grants only
+  Describe/List/Get-style metadata permissions — never GetObject, GetSecretValue,
+  Decrypt, or any other data-plane read, and no write/delete permissions at all.
+  This is the only role CloudWise needs; no long-lived keys are ever requested.
+
+Parameters:
+  CloudWisePlatformAccountId:
+    Type: String
+    Description: >
+      The AWS account ID CloudWise scans from. Confirm this against CloudWise's
+      published security page before deploying — it is the only account this
+      role will ever trust.
+    AllowedPattern: "^[0-9]{12}$"
+    ConstraintDescription: Must be a 12-digit AWS account ID.
+
+  ExternalId:
+    Type: String
+    Description: >
+      Unique per-tenant secret CloudWise generates for you at connect time.
+      Required on every AssumeRole call from CloudWise's side; without it,
+      CloudWise's own platform account still cannot assume this role. This
+      is what prevents the "confused deputy" problem where a role trusting
+      a shared account ARN could be assumed by any other tenant of that account.
+    MinLength: 16
+    NoEcho: true
+
+  RoleName:
+    Type: String
+    Default: CloudWiseReadOnlyRole
+    Description: Name of the IAM role to create.
+
+Resources:
+  CloudWiseReadOnlyRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${CloudWisePlatformAccountId}:root"
+            Action: "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Ref ExternalId
+      Policies:
+        - PolicyName: CloudWiseReadOnlyPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Sid: CostAndBilling
+                Effect: Allow
+                Action:
+                  - ce:GetCostAndUsage
+                  - ce:GetCostForecast
+                  - ce:GetDimensionValues
+                  - ce:GetTags
+                  - budgets:ViewBudget
+                  - pricing:DescribeServices
+                  - pricing:GetAttributeValues
+                  - pricing:GetProducts
+                Resource: "*"
+              - Sid: ComputeAndStorageInventory
+                Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeVolumes
+                  - ec2:DescribeSnapshots
+                  - ec2:DescribeAddresses
+                  - ec2:DescribeNatGateways
+                  - ec2:DescribeVpcEndpoints
+                  - ec2:DescribeRegions
+                  - ec2:DescribeTags
+                  - elasticloadbalancing:DescribeLoadBalancers
+                  - elasticloadbalancing:DescribeTargetHealth
+                  - elasticloadbalancing:DescribeTags
+                  - rds:DescribeDBInstances
+                  - rds:DescribeDBSnapshots
+                  - rds:ListTagsForResource
+                  - ecs:ListClusters
+                  - ecs:DescribeClusters
+                  - ecs:ListServices
+                  - elasticache:DescribeCacheClusters
+                  - lambda:ListFunctions
+                  - lambda:GetFunctionConfiguration
+                Resource: "*"
+              - Sid: StorageMetadataOnly
+                Effect: Allow
+                Action:
+                  - s3:ListAllMyBuckets
+                  - s3:GetBucketLocation
+                  - s3:GetLifecycleConfiguration
+                  - s3:GetBucketTagging
+                  - s3:GetBucketVersioning
+                Resource: "*"
+              - Sid: UtilizationMetrics
+                Effect: Allow
+                Action:
+                  - cloudwatch:GetMetricData
+                  - cloudwatch:GetMetricStatistics
+                  - cloudwatch:ListMetrics
+                  - logs:DescribeLogGroups
+                  - compute-optimizer:GetEC2InstanceRecommendations
+                  - compute-optimizer:GetEBSVolumeRecommendations
+                  - compute-optimizer:GetRDSDatabaseRecommendations
+                Resource: "*"
+              - Sid: ResourceTagging
+                Effect: Allow
+                Action:
+                  - tag:GetResources
+                  - tag:GetTagKeys
+                  - tag:GetTagValues
+                Resource: "*"
+
+Outputs:
+  RoleArn:
+    Description: Paste this ARN into the CloudWise "Connect AWS" wizard.
+    Value: !GetAtt CloudWiseReadOnlyRole.Arn

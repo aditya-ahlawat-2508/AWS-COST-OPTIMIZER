@@ -1,0 +1,105 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: >
+  CloudWise scoped automation access — OPT-IN ONLY, deploy this in addition
+  to (never instead of) readonly-role.yaml. Grants a narrow set of low-risk,
+  reversible write actions, and only on resources explicitly tagged
+  cloudwise:managed=true. No delete or terminate permissions of any kind are
+  granted by this template; those require a human running them manually.
+  Every action CloudWise takes through this role is behind an approved
+  change request and fully audited — see the CloudWise dashboard's audit log.
+
+Parameters:
+  CloudWisePlatformAccountId:
+    Type: String
+    AllowedPattern: "^[0-9]{12}$"
+    ConstraintDescription: Must be a 12-digit AWS account ID.
+
+  ExternalId:
+    Type: String
+    MinLength: 16
+    NoEcho: true
+
+  RoleName:
+    Type: String
+    Default: CloudWiseActionsRole
+    Description: Name of the IAM role to create.
+
+Resources:
+  CloudWiseActionsRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Ref RoleName
+      # 3600 is the role's ceiling (and the CloudFormation-enforced minimum);
+      # the actual AssumeRole call requests a much shorter 900s session — see
+      # services/scanner/session.py's SESSION_DURATION_SECONDS.
+      MaxSessionDuration: 3600
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${CloudWisePlatformAccountId}:root"
+            Action: "sts:AssumeRole"
+            Condition:
+              StringEquals:
+                "sts:ExternalId": !Ref ExternalId
+      Policies:
+        - PolicyName: CloudWiseScopedActionsPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              # Stop/start EC2 — reversible, no data loss. Terminate is
+              # deliberately excluded: that action always requires a human
+              # in the console per the blueprint's safety rules.
+              - Sid: StopStartTaggedEC2
+                Effect: Allow
+                Action:
+                  - ec2:StopInstances
+                  - ec2:StartInstances
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    "ec2:ResourceTag/cloudwise:managed": "true"
+              # gp2 -> gp3 in place: AWS-documented zero-downtime, no-data-loss
+              # operation, which is why it's the lowest-risk action offered.
+              - Sid: ModifyTaggedVolumes
+                Effect: Allow
+                Action:
+                  - ec2:ModifyVolume
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    "ec2:ResourceTag/cloudwise:managed": "true"
+              - Sid: ReleaseTaggedElasticIPs
+                Effect: Allow
+                Action:
+                  - ec2:ReleaseAddress
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    "ec2:ResourceTag/cloudwise:managed": "true"
+              - Sid: StopStartTaggedRDS
+                Effect: Allow
+                Action:
+                  - rds:StopDBInstance
+                  - rds:StartDBInstance
+                Resource: "*"
+                Condition:
+                  StringEquals:
+                    "rds:db-tag/cloudwise:managed": "true"
+              # Needed before every write above, to re-check (per the blueprint's
+              # "dry-run first, re-check the resource still matches" rule) that
+              # the resource's state hasn't changed since the finding was made.
+              - Sid: PreActionRecheck
+                Effect: Allow
+                Action:
+                  - ec2:DescribeInstances
+                  - ec2:DescribeVolumes
+                  - ec2:DescribeAddresses
+                  - rds:DescribeDBInstances
+                Resource: "*"
+
+Outputs:
+  RoleArn:
+    Description: Paste this ARN into the CloudWise automation settings if you opt into scheduled actions.
+    Value: !GetAtt CloudWiseActionsRole.Arn

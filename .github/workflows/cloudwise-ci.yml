@@ -1,0 +1,56 @@
+name: CloudWise CI
+
+on:
+  push:
+    branches: [main]
+    paths: ["cloudwise/**", ".github/workflows/cloudwise-ci.yml"]
+  pull_request:
+    branches: [main]
+    paths: ["cloudwise/**", ".github/workflows/cloudwise-ci.yml"]
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: cloudwise
+
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: cloudwise_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
+    env:
+      TEST_PGHOST: localhost
+      TEST_PGUSER: postgres
+      TEST_PGPASSWORD: postgres
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements-dev.txt
+
+      - name: Lint CloudFormation onboarding templates
+        run: |
+          pip install cfn-lint
+          cfn-lint infra/onboarding/readonly-role.yaml infra/onboarding/actions-role.yaml
+
+      - name: Run tests
+        run: python -m pytest tests/ -v

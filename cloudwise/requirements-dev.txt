@@ -1,0 +1,2 @@
+-r apps/api/requirements-dev.txt
+moto[ec2,sts,cloudwatch]>=5.0.0

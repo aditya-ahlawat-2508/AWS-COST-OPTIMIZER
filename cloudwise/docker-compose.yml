@@ -1,0 +1,20 @@
+services:
+  # POSTGRES_USER is the bootstrap superuser for this container (that's how
+  # the postgres image works) and only ever runs db/init.sql. The FastAPI app
+  # must connect as the unprivileged `cloudwise_app` role init.sql creates —
+  # see apps/api/.env.example — otherwise RLS (Postgres FORCE ROW LEVEL
+  # SECURITY only binds non-superusers) would silently do nothing.
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_DB: cloudwise
+      POSTGRES_USER: cloudwise_admin
+      POSTGRES_PASSWORD: cloudwise_admin
+    ports:
+      - "5432:5432"
+    volumes:
+      - cloudwise_pgdata:/var/lib/postgresql/data
+      - ./apps/api/db/init.sql:/docker-entrypoint-initdb.d/01-init.sql:ro
+
+volumes:
+  cloudwise_pgdata:

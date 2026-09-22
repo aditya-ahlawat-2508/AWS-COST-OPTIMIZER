@@ -1,0 +1,128 @@
+-- CloudWise schema with Postgres Row-Level Security as the tenant-isolation
+-- backstop: even if an application query forgets a WHERE org_id = ... clause,
+-- the database itself refuses to return or touch another org's rows.
+
+CREATE EXTENSION IF NOT EXISTS pgcrypto;
+
+CREATE TABLE organizations (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    name        TEXT NOT NULL,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE users (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id          UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    email           TEXT NOT NULL UNIQUE,
+    password_hash   TEXT NOT NULL,
+    role            TEXT NOT NULL DEFAULT 'owner' CHECK (role IN ('owner', 'admin', 'approver', 'viewer')),
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE aws_accounts (
+    id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id          UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    aws_account_id  TEXT NOT NULL,
+    role_arn        TEXT NOT NULL,
+    external_id     TEXT NOT NULL,
+    label           TEXT,
+    status          TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'connected', 'error')),
+    last_scanned_at TIMESTAMPTZ,
+    created_at      TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (org_id, aws_account_id)
+);
+
+CREATE TABLE findings (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id            UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    account_id        UUID NOT NULL REFERENCES aws_accounts(id) ON DELETE CASCADE,
+    rule_id           TEXT NOT NULL,
+    resource_id       TEXT NOT NULL,
+    resource_type     TEXT NOT NULL,
+    evidence          JSONB NOT NULL DEFAULT '{}'::jsonb,
+    monthly_savings   NUMERIC(12, 2) NOT NULL,
+    currency          TEXT NOT NULL DEFAULT 'USD',
+    effort            TEXT NOT NULL CHECK (effort IN ('low', 'medium', 'high')),
+    risk              TEXT NOT NULL CHECK (risk IN ('low', 'medium', 'high')),
+    status            TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'approved', 'done', 'dismissed')),
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE change_requests (
+    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id        UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    finding_id    UUID NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
+    requested_by  UUID NOT NULL REFERENCES users(id),
+    approved_by   UUID REFERENCES users(id),
+    status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'executed', 'failed')),
+    rollback_plan TEXT,
+    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+CREATE TABLE audit_log (
+    id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    actor_id    UUID REFERENCES users(id),
+    action      TEXT NOT NULL,
+    details     JSONB NOT NULL DEFAULT '{}'::jsonb,
+    created_at  TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Row-Level Security: every org-scoped table is readable/writable only when
+-- app.current_org_id (set per-request by the API, see app/database.py) matches
+-- the row's org_id. FORCE ROW LEVEL SECURITY means even the table owner is
+-- bound by this — there is no privileged connection that bypasses it.
+ALTER TABLE users           ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users           FORCE ROW LEVEL SECURITY;
+ALTER TABLE aws_accounts    ENABLE ROW LEVEL SECURITY;
+ALTER TABLE aws_accounts    FORCE ROW LEVEL SECURITY;
+ALTER TABLE findings        ENABLE ROW LEVEL SECURITY;
+ALTER TABLE findings        FORCE ROW LEVEL SECURITY;
+ALTER TABLE change_requests ENABLE ROW LEVEL SECURITY;
+ALTER TABLE change_requests FORCE ROW LEVEL SECURITY;
+ALTER TABLE audit_log       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE audit_log       FORCE ROW LEVEL SECURITY;
+
+CREATE POLICY org_isolation_users ON users
+    USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
+    WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
+
+CREATE POLICY org_isolation_aws_accounts ON aws_accounts
+    USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
+    WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
+
+CREATE POLICY org_isolation_findings ON findings
+    USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
+    WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
+
+CREATE POLICY org_isolation_change_requests ON change_requests
+    USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
+    WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
+
+CREATE POLICY org_isolation_audit_log ON audit_log
+    USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
+    WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
+
+-- The one deliberate bypass: user registration/login has to look a user up by
+-- email before it knows their org_id (that's the whole point of login). This
+-- policy allows SELECT-by-email with no org context, but only ever from the
+-- auth routes, and never for any other table.
+CREATE POLICY allow_login_lookup ON users
+    FOR SELECT
+    USING (current_setting('app.allow_login_lookup', true) = 'true');
+
+-- FORCE ROW LEVEL SECURITY only binds the table owner — Postgres superusers
+-- (and anyone with BYPASSRLS) ignore RLS entirely no matter what. So the app
+-- must never connect as the migration/admin role that ran this script; it
+-- connects as this separate, deliberately unprivileged role instead.
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT FROM pg_roles WHERE rolname = 'cloudwise_app') THEN
+        CREATE ROLE cloudwise_app LOGIN PASSWORD 'cloudwise_app_dev_password' NOSUPERUSER NOBYPASSRLS;
+    END IF;
+END
+$$;
+
+GRANT USAGE ON SCHEMA public TO cloudwise_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON ALL TABLES IN SCHEMA public TO cloudwise_app;
+GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA public TO cloudwise_app;
