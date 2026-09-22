@@ -52,18 +52,40 @@ CREATE TABLE findings (
     effort            TEXT NOT NULL CHECK (effort IN ('low', 'medium', 'high')),
     risk              TEXT NOT NULL CHECK (risk IN ('low', 'medium', 'high')),
     status            TEXT NOT NULL DEFAULT 'open' CHECK (status IN ('open', 'approved', 'done', 'dismissed')),
-    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now(),
+    -- Lets re-scans upsert (update evidence/$/risk) instead of duplicating,
+    -- while leaving a user's approve/dismiss decision on status untouched.
+    UNIQUE (org_id, account_id, rule_id, resource_id)
 );
 
 CREATE TABLE change_requests (
-    id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-    org_id        UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
-    finding_id    UUID NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
-    requested_by  UUID NOT NULL REFERENCES users(id),
-    approved_by   UUID REFERENCES users(id),
-    status        TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'executed', 'failed')),
-    rollback_plan TEXT,
-    created_at    TIMESTAMPTZ NOT NULL DEFAULT now()
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id            UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    finding_id        UUID NOT NULL REFERENCES findings(id) ON DELETE CASCADE,
+    action_type       TEXT NOT NULL CHECK (action_type IN ('stop_ec2', 'modify_volume_gp3', 'release_eip', 'stop_rds')),
+    requested_by      UUID NOT NULL REFERENCES users(id),
+    approved_by       UUID REFERENCES users(id),
+    status            TEXT NOT NULL DEFAULT 'pending' CHECK (status IN ('pending', 'approved', 'rejected', 'executed', 'failed')),
+    rollback_plan     TEXT,
+    pre_check_snapshot JSONB,
+    execution_result  JSONB,
+    executed_at       TIMESTAMPTZ,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
+-- Normalized daily spend, aggregated from CUR/Data Exports by
+-- services/cur/loader.py. One row per (org, account, day, service).
+CREATE TABLE spend_daily (
+    id               UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id           UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    account_id       UUID NOT NULL REFERENCES aws_accounts(id) ON DELETE CASCADE,
+    usage_date       DATE NOT NULL,
+    service          TEXT NOT NULL,
+    unblended_cost   NUMERIC(14, 4) NOT NULL,
+    amortized_cost   NUMERIC(14, 4) NOT NULL,
+    currency         TEXT NOT NULL DEFAULT 'USD',
+    created_at       TIMESTAMPTZ NOT NULL DEFAULT now(),
+    UNIQUE (org_id, account_id, usage_date, service)
 );
 
 CREATE TABLE audit_log (
@@ -89,6 +111,8 @@ ALTER TABLE change_requests ENABLE ROW LEVEL SECURITY;
 ALTER TABLE change_requests FORCE ROW LEVEL SECURITY;
 ALTER TABLE audit_log       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE audit_log       FORCE ROW LEVEL SECURITY;
+ALTER TABLE spend_daily     ENABLE ROW LEVEL SECURITY;
+ALTER TABLE spend_daily     FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY org_isolation_users ON users
     USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
@@ -107,6 +131,10 @@ CREATE POLICY org_isolation_change_requests ON change_requests
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
 
 CREATE POLICY org_isolation_audit_log ON audit_log
+    USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
+    WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
+
+CREATE POLICY org_isolation_spend_daily ON spend_daily
     USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
 

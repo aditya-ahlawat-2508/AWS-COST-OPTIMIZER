@@ -1,6 +1,6 @@
 import uuid
-from datetime import datetime
-from typing import Optional
+from datetime import date, datetime
+from typing import List, Optional
 
 from pydantic import BaseModel, ConfigDict, Field
 
@@ -32,6 +32,11 @@ class AWSAccountOut(BaseModel):
     created_at: datetime
 
 
+class ScanResult(BaseModel):
+    resources_scanned: int
+    findings_written: int
+
+
 class FindingOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -44,3 +49,18 @@ class FindingOut(BaseModel):
     effort: str
     risk: str
     status: str
+
+
+class SpendByGroup(BaseModel):
+    key: str
+    cost: float
+
+
+class SpendSummary(BaseModel):
+    start_date: date
+    end_date: date
+    view: str
+    group_by: str
+    currency: str
+    total_cost: float
+    breakdown: List[SpendByGroup]
