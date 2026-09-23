@@ -61,6 +61,38 @@ class CopilotChatResponse(BaseModel):
     grounding_warnings: List[str]
 
 
+class AnomalyOut(BaseModel):
+    service: str
+    baseline_daily_avg: float
+    recent_daily_avg: float
+    delta_monthly: float
+    since: date
+
+
+class BudgetCreate(BaseModel):
+    name: str = Field(min_length=1)
+    monthly_limit_usd: float = Field(gt=0)
+    account_id: Optional[uuid.UUID] = None
+
+
+class BudgetOut(BaseModel):
+    id: uuid.UUID
+    account_id: Optional[uuid.UUID]
+    name: str
+    monthly_limit_usd: float
+    spent_this_month: float
+
+
+class AuditLogOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    actor_id: Optional[uuid.UUID]
+    action: str
+    details: dict
+    created_at: datetime
+
+
 class ChangeRequestOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

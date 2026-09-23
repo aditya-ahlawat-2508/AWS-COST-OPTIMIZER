@@ -98,6 +98,19 @@ class Subscription(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
+class Budget(Base):
+    __tablename__ = "budgets"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
+    account_id: Mapped[Optional[uuid.UUID]] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("aws_accounts.id"), nullable=True
+    )
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    monthly_limit_usd: Mapped[float] = mapped_column(Numeric(12, 2), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
 class SpendDaily(Base):
     __tablename__ = "spend_daily"
 

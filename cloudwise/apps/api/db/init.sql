@@ -107,6 +107,18 @@ CREATE TABLE spend_daily (
     UNIQUE (org_id, account_id, usage_date, service)
 );
 
+-- Named spend limits. Scoped to one account, or org-wide when account_id is
+-- NULL. Not scoped by team/tag — that needs tag data in spend_daily, which
+-- CUR ingestion doesn't capture yet (see services/cur/parser.py).
+CREATE TABLE budgets (
+    id                UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id            UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    account_id        UUID REFERENCES aws_accounts(id) ON DELETE CASCADE,
+    name              TEXT NOT NULL,
+    monthly_limit_usd NUMERIC(12, 2) NOT NULL,
+    created_at        TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 CREATE TABLE audit_log (
     id          UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     org_id      UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
@@ -134,6 +146,8 @@ ALTER TABLE spend_daily     ENABLE ROW LEVEL SECURITY;
 ALTER TABLE spend_daily     FORCE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions   FORCE ROW LEVEL SECURITY;
+ALTER TABLE budgets         ENABLE ROW LEVEL SECURITY;
+ALTER TABLE budgets         FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY org_isolation_users ON users
     USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
@@ -160,6 +174,10 @@ CREATE POLICY org_isolation_spend_daily ON spend_daily
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
 
 CREATE POLICY org_isolation_subscriptions ON subscriptions
+    USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
+    WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
+
+CREATE POLICY org_isolation_budgets ON budgets
     USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
 

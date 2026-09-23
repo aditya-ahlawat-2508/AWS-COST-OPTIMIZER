@@ -1,6 +1,5 @@
 // Typed client for the real CloudWise API (cloudwise/apps/api). Every
-// function here hits a live, tested backend route — see lib/mock-data.ts for
-// the screens that don't have a backend endpoint yet.
+// function here hits a live, tested backend route.
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000";
 
@@ -66,6 +65,30 @@ export type Me = {
   org_id: string;
   email: string;
   role: string;
+};
+
+export type AuditLogEntry = {
+  id: string;
+  actor_id: string | null;
+  action: string;
+  details: Record<string, unknown>;
+  created_at: string;
+};
+
+export type Budget = {
+  id: string;
+  account_id: string | null;
+  name: string;
+  monthly_limit_usd: number;
+  spent_this_month: number;
+};
+
+export type Anomaly = {
+  service: string;
+  baseline_daily_avg: number;
+  recent_daily_avg: number;
+  delta_monthly: number;
+  since: string;
 };
 
 class ApiError extends Error {
@@ -145,6 +168,14 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ message }),
     }),
+
+  listAuditLog: (token: string) => request<AuditLogEntry[]>("/audit-log", token),
+
+  listBudgets: (token: string) => request<Budget[]>("/budgets", token),
+  createBudget: (token: string, payload: { name: string; monthly_limit_usd: number; account_id?: string }) =>
+    request<Budget>("/budgets", token, { method: "POST", body: JSON.stringify(payload) }),
+
+  listAnomalies: (token: string) => request<Anomaly[]>("/anomalies", token),
 
   // Demo endpoints need no auth token at all.
   demoAccounts: () => request<AWSAccount[]>("/demo/accounts", null),

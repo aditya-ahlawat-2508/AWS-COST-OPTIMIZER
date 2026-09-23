@@ -3,7 +3,19 @@ import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 
-from .routers import accounts, auth, billing, change_requests, copilot, demo, findings, spend
+from .routers import (
+    accounts,
+    anomalies,
+    audit_log,
+    auth,
+    billing,
+    budgets,
+    change_requests,
+    copilot,
+    demo,
+    findings,
+    spend,
+)
 
 app = FastAPI(title="CloudWise API")
 
@@ -31,6 +43,9 @@ app.include_router(copilot.router)
 app.include_router(change_requests.router)
 app.include_router(billing.router)
 app.include_router(demo.router)
+app.include_router(audit_log.router)
+app.include_router(budgets.router)
+app.include_router(anomalies.router)
 
 
 @app.get("/health")
