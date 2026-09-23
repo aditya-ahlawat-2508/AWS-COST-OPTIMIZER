@@ -83,6 +83,15 @@ export type Budget = {
   spent_this_month: number;
 };
 
+export type VerifiedSavings = {
+  service: string;
+  before_daily_avg: number;
+  after_daily_avg: number;
+  verified_monthly_savings: number;
+  before_days: number;
+  after_days: number;
+};
+
 export type Schedule = {
   id: string;
   account_id: string;
@@ -168,6 +177,8 @@ export const api = {
     request<ChangeRequest>(`/change-requests/${id}/approve`, token, { method: "POST" }),
   executeChangeRequest: (token: string, id: string) =>
     request<ChangeRequest>(`/change-requests/${id}/execute`, token, { method: "POST" }),
+  getVerifiedSavings: (token: string, id: string) =>
+    request<VerifiedSavings>(`/change-requests/${id}/verified-savings`, token),
 
   getEntitlement: (token: string) => request<Entitlement>("/billing/entitlement", token),
   createCheckout: (token: string, tier: "starter" | "growth", successUrl: string, cancelUrl: string) =>

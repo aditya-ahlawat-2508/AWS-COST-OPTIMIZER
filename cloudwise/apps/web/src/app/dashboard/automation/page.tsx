@@ -2,9 +2,9 @@
 
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
-import { api, type AWSAccount, type ChangeRequest, type Schedule, ApiError } from "@/lib/api";
+import { api, type AWSAccount, type ChangeRequest, type Schedule, type VerifiedSavings, ApiError } from "@/lib/api";
 import { StatusBadge } from "@/components/badges";
-import { formatDate } from "@/lib/utils";
+import { formatDate, formatMoney } from "@/lib/utils";
 
 export default function AutomationPage() {
   const { getToken } = useAuth();
@@ -14,6 +14,7 @@ export default function AutomationPage() {
   const [busy, setBusy] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [runResult, setRunResult] = useState<string | null>(null);
+  const [verified, setVerified] = useState<Record<string, VerifiedSavings | string>>({});
 
   const [newResourceId, setNewResourceId] = useState("");
   const [newAccountId, setNewAccountId] = useState("");
@@ -35,7 +36,6 @@ export default function AutomationPage() {
   }
 
   useEffect(() => {
-    // eslint-disable-next-line react-hooks/set-state-in-effect -- one-shot fetch on mount, not a derived-state loop
     load();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
@@ -96,6 +96,20 @@ export default function AutomationPage() {
     await load();
   }
 
+  async function checkVerifiedSavings(id: string) {
+    const token = await getToken();
+    if (!token) return;
+    try {
+      const result = await api.getVerifiedSavings(token, id);
+      setVerified((v) => ({ ...v, [id]: result }));
+    } catch (err) {
+      setVerified((v) => ({
+        ...v,
+        [id]: err instanceof ApiError ? err.message : "Couldn't compute verified savings.",
+      }));
+    }
+  }
+
   async function runSchedulesNow() {
     const token = await getToken();
     if (!token) return;
@@ -133,35 +147,53 @@ export default function AutomationPage() {
                 </td>
               </tr>
             )}
-            {requests.map((r) => (
-              <tr key={r.id} className="border-b border-border last:border-0">
-                <td className="px-4 py-3 capitalize">{r.action_type.replace(/_/g, " ")}</td>
-                <td className="px-4 py-3">
-                  <StatusBadge status={r.status} />
-                </td>
-                <td className="px-4 py-3 text-muted">{formatDate(r.created_at)}</td>
-                <td className="px-4 py-3 text-right space-x-2">
-                  {r.status === "pending" && (
-                    <button
-                      onClick={() => approve(r.id)}
-                      disabled={busy === r.id}
-                      className="rounded-md border border-border px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-50"
-                    >
-                      Approve
-                    </button>
-                  )}
-                  {r.status === "approved" && (
-                    <button
-                      onClick={() => execute(r.id)}
-                      disabled={busy === r.id}
-                      className="rounded-md bg-accent px-3 py-1 text-xs text-accent-foreground disabled:opacity-50"
-                    >
-                      Execute
-                    </button>
-                  )}
-                </td>
-              </tr>
-            ))}
+            {requests.map((r) => {
+              const v = verified[r.id];
+              return (
+                <tr key={r.id} className="border-b border-border last:border-0">
+                  <td className="px-4 py-3 capitalize">{r.action_type.replace(/_/g, " ")}</td>
+                  <td className="px-4 py-3">
+                    <StatusBadge status={r.status} />
+                  </td>
+                  <td className="px-4 py-3 text-muted">{formatDate(r.created_at)}</td>
+                  <td className="px-4 py-3 text-right space-x-2">
+                    {r.status === "pending" && (
+                      <button
+                        onClick={() => approve(r.id)}
+                        disabled={busy === r.id}
+                        className="rounded-md border border-border px-3 py-1 text-xs hover:bg-surface-2 disabled:opacity-50"
+                      >
+                        Approve
+                      </button>
+                    )}
+                    {r.status === "approved" && (
+                      <button
+                        onClick={() => execute(r.id)}
+                        disabled={busy === r.id}
+                        className="rounded-md bg-accent px-3 py-1 text-xs text-accent-foreground disabled:opacity-50"
+                      >
+                        Execute
+                      </button>
+                    )}
+                    {r.status === "executed" && !v && (
+                      <button
+                        onClick={() => checkVerifiedSavings(r.id)}
+                        className="rounded-md border border-border px-3 py-1 text-xs hover:bg-surface-2"
+                      >
+                        Verify savings
+                      </button>
+                    )}
+                    {r.status === "executed" && v && (
+                      <span className="text-xs text-muted">
+                        {typeof v === "string"
+                          ? v
+                          : `${formatMoney(v.verified_monthly_savings)}/mo (${v.before_daily_avg}→${v.after_daily_avg}/day)`}
+                      </span>
+                    )}
+                  </td>
+                </tr>
+              );
+            })}
           </tbody>
         </table>
       </div>

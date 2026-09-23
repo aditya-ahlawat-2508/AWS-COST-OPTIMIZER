@@ -176,6 +176,15 @@ class EntitlementOut(BaseModel):
     max_accounts: Optional[int]
 
 
+class VerifiedSavingsOut(BaseModel):
+    service: str
+    before_daily_avg: float
+    after_daily_avg: float
+    verified_monthly_savings: float
+    before_days: int
+    after_days: int
+
+
 class SpendByGroup(BaseModel):
     key: str
     cost: float

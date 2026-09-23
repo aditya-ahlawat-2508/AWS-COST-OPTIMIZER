@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from typing import List
 
@@ -6,8 +7,8 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from ..deps import get_current_user, get_db
-from ..models import AWSAccount, ChangeRequest, Finding, User
-from ..schemas import ChangeRequestOut
+from ..models import AWSAccount, ChangeRequest, Finding, SpendDaily, User
+from ..schemas import ChangeRequestOut, VerifiedSavingsOut
 
 router = APIRouter(prefix="/change-requests", tags=["change-requests"])
 
@@ -44,6 +45,60 @@ def approve_change_request(
     change_request.approved_by = user.id
     db.flush()
     return change_request
+
+
+@router.get("/{change_request_id}/verified-savings", response_model=VerifiedSavingsOut)
+def get_verified_savings(
+    change_request_id: uuid.UUID,
+    window_days: int = 7,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+) -> VerifiedSavingsOut:
+    from services.analytics.verified_savings import RESOURCE_TYPE_TO_SERVICE, compute_verified_savings
+
+    change_request = db.get(ChangeRequest, change_request_id)
+    if change_request is None:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Change request not found")
+    if change_request.status != "executed" or change_request.executed_at is None:
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Verified savings are only available for executed change requests",
+        )
+
+    finding = db.get(Finding, change_request.finding_id)
+    service = RESOURCE_TYPE_TO_SERVICE.get(finding.resource_type)
+    if service is None:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=f"No spend mapping for resource type '{finding.resource_type}'",
+        )
+
+    executed_date = change_request.executed_at.date()
+    before_start = executed_date - datetime.timedelta(days=window_days)
+    after_end = executed_date + datetime.timedelta(days=window_days)
+
+    rows = db.execute(
+        select(SpendDaily.usage_date, SpendDaily.unblended_cost).where(
+            SpendDaily.org_id == user.org_id,
+            SpendDaily.account_id == finding.account_id,
+            SpendDaily.service == service,
+            SpendDaily.usage_date >= before_start,
+            SpendDaily.usage_date <= after_end,
+        )
+    ).all()
+
+    before_costs = [(d, float(c)) for d, c in rows if d < executed_date]
+    after_costs = [(d, float(c)) for d, c in rows if d >= executed_date]
+
+    result = compute_verified_savings(before_costs, after_costs, service)
+    return VerifiedSavingsOut(
+        service=result.service,
+        before_daily_avg=result.before_daily_avg,
+        after_daily_avg=result.after_daily_avg,
+        verified_monthly_savings=result.verified_monthly_savings,
+        before_days=result.before_days,
+        after_days=result.after_days,
+    )
 
 
 @router.post("/{change_request_id}/execute", response_model=ChangeRequestOut)
