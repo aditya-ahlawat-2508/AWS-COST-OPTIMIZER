@@ -19,12 +19,11 @@ export default function FindingDetailPage({ params }: PageProps<"/dashboard/find
     (async () => {
       const token = await getToken();
       if (!token) return;
-      // No single-finding GET route yet — the list is small enough per org
-      // that filtering client-side is simpler than adding one right now.
-      const all = await api.listFindings(token);
-      const match = all.find((f) => f.id === id);
-      if (!match) setNotFound(true);
-      else setFinding(match);
+      try {
+        setFinding(await api.getFinding(token, id));
+      } catch (err) {
+        if (err instanceof ApiError && err.status === 404) setNotFound(true);
+      }
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [id]);

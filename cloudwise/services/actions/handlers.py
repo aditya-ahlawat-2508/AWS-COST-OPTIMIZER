@@ -1,8 +1,9 @@
-"""One handler per action_type in infra/onboarding/actions-role.yaml — the
-same four, no more: stop_ec2, modify_volume_gp3, release_eip, stop_rds.
-None of these delete anything, so there's no snapshot-before-delete case
-here (the blueprint's rule still applies; it just doesn't come up for this
-action set — a future 'delete unattached EBS' action would need one).
+"""Handlers for infra/onboarding/actions-role.yaml's granted actions:
+stop_ec2, start_ec2 (schedules need both directions), modify_volume_gp3,
+release_eip, stop_rds. None of these delete anything, so there's no
+snapshot-before-delete case here (the blueprint's rule still applies; it
+just doesn't come up for this action set — a future 'delete unattached EBS'
+action would need one).
 
 Every handler re-checks the resource's actual current state before acting
 and raises PreCheckFailed if it's drifted from what the finding assumed —
@@ -37,6 +38,17 @@ def stop_ec2(ec2_client, instance_id: str) -> dict:
 
     response = ec2_client.stop_instances(InstanceIds=[instance_id])
     new_state = response["StoppingInstances"][0]["CurrentState"]["Name"]
+    return {"pre_check_state": state, "new_state": new_state}
+
+
+def start_ec2(ec2_client, instance_id: str) -> dict:
+    described = ec2_client.describe_instances(InstanceIds=[instance_id])
+    state = described["Reservations"][0]["Instances"][0]["State"]["Name"]
+    if state != "stopped":
+        raise PreCheckFailed(f"Expected instance {instance_id} to be stopped, found '{state}'")
+
+    response = ec2_client.start_instances(InstanceIds=[instance_id])
+    new_state = response["StartingInstances"][0]["CurrentState"]["Name"]
     return {"pre_check_state": state, "new_state": new_state}
 
 

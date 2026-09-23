@@ -112,6 +112,26 @@ CREATE TABLE spend_daily (
     UNIQUE (org_id, account_id, usage_date, service)
 );
 
+-- Office-hours automation (blueprint Section 06). Evaluated by
+-- services/actions/scheduler.py against services/actions/schedule_logic.py's
+-- pure due_action() — a schedule is itself the pre-approved automation, so
+-- running it doesn't go through change_requests' approval flow the way a
+-- one-off proposed fix does.
+CREATE TABLE schedules (
+    id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    org_id         UUID NOT NULL REFERENCES organizations(id) ON DELETE CASCADE,
+    account_id     UUID NOT NULL REFERENCES aws_accounts(id) ON DELETE CASCADE,
+    resource_id    TEXT NOT NULL,
+    resource_type  TEXT NOT NULL DEFAULT 'ec2_instance' CHECK (resource_type IN ('ec2_instance')),
+    timezone       TEXT NOT NULL DEFAULT 'UTC',
+    start_hour     INTEGER NOT NULL CHECK (start_hour >= 0 AND start_hour < 24),
+    stop_hour      INTEGER NOT NULL CHECK (stop_hour > 0 AND stop_hour <= 24),
+    weekdays_only  BOOLEAN NOT NULL DEFAULT true,
+    enabled        BOOLEAN NOT NULL DEFAULT true,
+    created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+    CHECK (start_hour < stop_hour)
+);
+
 -- Named spend limits. Scoped to one account, or org-wide when account_id is
 -- NULL. Not scoped by team/tag — that needs tag data in spend_daily, which
 -- CUR ingestion doesn't capture yet (see services/cur/parser.py).
@@ -153,6 +173,8 @@ ALTER TABLE subscriptions   ENABLE ROW LEVEL SECURITY;
 ALTER TABLE subscriptions   FORCE ROW LEVEL SECURITY;
 ALTER TABLE budgets         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE budgets         FORCE ROW LEVEL SECURITY;
+ALTER TABLE schedules       ENABLE ROW LEVEL SECURITY;
+ALTER TABLE schedules       FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY org_isolation_users ON users
     USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
@@ -183,6 +205,10 @@ CREATE POLICY org_isolation_subscriptions ON subscriptions
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
 
 CREATE POLICY org_isolation_budgets ON budgets
+    USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
+    WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
+
+CREATE POLICY org_isolation_schedules ON schedules
     USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
 

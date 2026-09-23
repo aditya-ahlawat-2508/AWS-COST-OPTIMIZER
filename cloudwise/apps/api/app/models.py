@@ -100,6 +100,22 @@ class Subscription(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
+class Schedule(Base):
+    __tablename__ = "schedules"
+
+    id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), primary_key=True, default=uuid.uuid4)
+    org_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("organizations.id"))
+    account_id: Mapped[uuid.UUID] = mapped_column(UUID(as_uuid=True), ForeignKey("aws_accounts.id"))
+    resource_id: Mapped[str] = mapped_column(String, nullable=False)
+    resource_type: Mapped[str] = mapped_column(String, default="ec2_instance")
+    timezone: Mapped[str] = mapped_column(String, default="UTC")
+    start_hour: Mapped[int] = mapped_column(nullable=False)
+    stop_hour: Mapped[int] = mapped_column(nullable=False)
+    weekdays_only: Mapped[bool] = mapped_column(default=True)
+    enabled: Mapped[bool] = mapped_column(default=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
 class Budget(Base):
     __tablename__ = "budgets"
 

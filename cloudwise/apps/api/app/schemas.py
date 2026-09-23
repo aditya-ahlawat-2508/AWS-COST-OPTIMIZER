@@ -2,7 +2,7 @@ import uuid
 from datetime import date, datetime
 from typing import List, Optional
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class UserOut(BaseModel):
@@ -81,6 +81,43 @@ class BudgetOut(BaseModel):
     name: str
     monthly_limit_usd: float
     spent_this_month: float
+
+
+class ScheduleCreate(BaseModel):
+    account_id: uuid.UUID
+    resource_id: str = Field(min_length=1)
+    resource_type: str = Field(default="ec2_instance", pattern=r"^ec2_instance$")
+    timezone: str = Field(default="UTC")
+    start_hour: int = Field(ge=0, lt=24)
+    stop_hour: int = Field(gt=0, le=24)
+    weekdays_only: bool = True
+    enabled: bool = True
+
+    @model_validator(mode="after")
+    def _check_hour_window(self) -> "ScheduleCreate":
+        if self.start_hour >= self.stop_hour:
+            raise ValueError("start_hour must be before stop_hour")
+        return self
+
+
+class ScheduleOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: uuid.UUID
+    account_id: uuid.UUID
+    resource_id: str
+    resource_type: str
+    timezone: str
+    start_hour: int
+    stop_hour: int
+    weekdays_only: bool
+    enabled: bool
+    created_at: datetime
+
+
+class RunSchedulesResult(BaseModel):
+    evaluated: int
+    actions_taken: int
 
 
 class AuditLogOut(BaseModel):

@@ -14,6 +14,7 @@ from .routers import (
     copilot,
     demo,
     findings,
+    schedules,
     spend,
 )
 
@@ -46,6 +47,7 @@ app.include_router(demo.router)
 app.include_router(audit_log.router)
 app.include_router(budgets.router)
 app.include_router(anomalies.router)
+app.include_router(schedules.router)
 
 
 @app.get("/health")

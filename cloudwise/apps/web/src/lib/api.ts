@@ -83,6 +83,18 @@ export type Budget = {
   spent_this_month: number;
 };
 
+export type Schedule = {
+  id: string;
+  account_id: string;
+  resource_id: string;
+  resource_type: string;
+  timezone: string;
+  start_hour: number;
+  stop_hour: number;
+  weekdays_only: boolean;
+  enabled: boolean;
+};
+
 export type Anomaly = {
   service: string;
   baseline_daily_avg: number;
@@ -141,6 +153,7 @@ export const api = {
     ),
 
   listFindings: (token: string) => request<Finding[]>("/findings", token),
+  getFinding: (token: string, id: string) => request<Finding>(`/findings/${id}`, token),
 
   getSpend: (
     token: string,
@@ -181,6 +194,16 @@ export const api = {
     request<Budget>("/budgets", token, { method: "POST", body: JSON.stringify(payload) }),
 
   listAnomalies: (token: string) => request<Anomaly[]>("/anomalies", token),
+
+  listSchedules: (token: string) => request<Schedule[]>("/schedules", token),
+  createSchedule: (
+    token: string,
+    payload: { account_id: string; resource_id: string; start_hour: number; stop_hour: number; timezone?: string; weekdays_only?: boolean }
+  ) => request<Schedule>("/schedules", token, { method: "POST", body: JSON.stringify(payload) }),
+  deleteSchedule: (token: string, id: string) =>
+    request<void>(`/schedules/${id}`, token, { method: "DELETE" }),
+  runSchedulesNow: (token: string) =>
+    request<{ evaluated: number; actions_taken: number }>("/schedules/run", token, { method: "POST" }),
 
   // Demo endpoints need no auth token at all.
   demoAccounts: () => request<AWSAccount[]>("/demo/accounts", null),
