@@ -24,14 +24,16 @@ app = FastAPI(title="CloudWise API")
 # apps/web (Next.js) calls this API directly from the browser, so it needs
 # CORS — without it every fetch's preflight OPTIONS request gets a plain 405
 # and the browser reports it to JS as an opaque "Failed to fetch", not the
-# actual reason. CORS_ALLOWED_ORIGINS lets a real deployment restrict this;
-# the local Next.js dev server origin is always allowed.
-_allowed_origins = {"http://localhost:3000"}
-_allowed_origins.update(o for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o)
+# actual reason. CORS_ALLOWED_ORIGINS lets a real deployment restrict this to
+# exact origins; the allow_origin_regex below covers any localhost dev port
+# (`next dev` picks a different one whenever 3000 is taken), which is fine
+# for local dev but never matches a real deployed origin.
+_allowed_origins = {o for o in os.environ.get("CORS_ALLOWED_ORIGINS", "").split(",") if o}
 
 app.add_middleware(
     CORSMiddleware,
     allow_origins=list(_allowed_origins),
+    allow_origin_regex=r"http://localhost:\d+",
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
