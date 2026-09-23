@@ -10,15 +10,39 @@ export default function SettingsPage() {
   const [checkoutBusy, setCheckoutBusy] = useState<string | null>(null);
   const [currency, setCurrency] = useState<"usd" | "inr">("usd");
   const [error, setError] = useState<string | null>(null);
+  const [slackWebhook, setSlackWebhook] = useState("");
+  const [slackSaved, setSlackSaved] = useState(false);
+  const [digestResult, setDigestResult] = useState<string | null>(null);
 
   useEffect(() => {
     (async () => {
       const token = await getToken();
       if (!token) return;
-      setEntitlement(await api.getEntitlement(token));
+      const [ent, slack] = await Promise.all([api.getEntitlement(token), api.getSlackSettings(token)]);
+      setEntitlement(ent);
+      setSlackWebhook(slack.slack_webhook_url ?? "");
     })();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  async function saveSlackWebhook() {
+    const token = await getToken();
+    if (!token) return;
+    await api.setSlackWebhook(token, slackWebhook || null);
+    setSlackSaved(true);
+    setTimeout(() => setSlackSaved(false), 2000);
+  }
+
+  async function sendDigestNow() {
+    const token = await getToken();
+    if (!token) return;
+    try {
+      const result = await api.sendSlackDigestNow(token);
+      setDigestResult(result.sent ? "Digest sent!" : "Slack didn't accept the message — check the webhook URL.");
+    } catch (err) {
+      setDigestResult(err instanceof ApiError ? err.message : "Couldn't send digest.");
+    }
+  }
 
   async function upgrade(tier: "starter" | "growth") {
     setCheckoutBusy(tier);
@@ -89,6 +113,34 @@ export default function SettingsPage() {
             {checkoutBusy === "growth" ? "Redirecting…" : "Upgrade to Growth"}
           </button>
         </div>
+      </section>
+
+      <section className="rounded-lg border border-border bg-surface p-4">
+        <h2 className="text-sm font-medium">Slack digest</h2>
+        <p className="mt-1 text-sm text-muted">
+          Paste an Incoming Webhook URL to get a weekly summary of spend and open findings.
+        </p>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <input
+            value={slackWebhook}
+            onChange={(e) => setSlackWebhook(e.target.value)}
+            placeholder="https://hooks.slack.com/services/…"
+            className="min-w-64 flex-1 rounded-md border border-border bg-background px-3 py-1.5 text-sm"
+          />
+          <button
+            onClick={saveSlackWebhook}
+            className="rounded-md border border-border px-3 py-1.5 text-sm hover:bg-surface-2"
+          >
+            {slackSaved ? "Saved!" : "Save"}
+          </button>
+          <button
+            onClick={sendDigestNow}
+            className="rounded-md bg-accent px-3 py-1.5 text-sm text-accent-foreground"
+          >
+            Send test digest
+          </button>
+        </div>
+        {digestResult && <p className="mt-2 text-sm text-muted">{digestResult}</p>}
       </section>
 
       <section>

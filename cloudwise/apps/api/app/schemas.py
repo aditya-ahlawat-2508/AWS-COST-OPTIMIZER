@@ -121,6 +121,18 @@ class RunSchedulesResult(BaseModel):
     actions_taken: int
 
 
+class NotificationSettingsOut(BaseModel):
+    slack_webhook_url: Optional[str]
+
+
+class NotificationSettingsUpdate(BaseModel):
+    slack_webhook_url: Optional[str] = None
+
+
+class SendDigestResult(BaseModel):
+    sent: bool
+
+
 class AuditLogOut(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 

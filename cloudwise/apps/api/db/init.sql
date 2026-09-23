@@ -132,6 +132,17 @@ CREATE TABLE schedules (
     CHECK (start_hour < stop_hour)
 );
 
+-- One row per org, created on first PUT /notifications/slack. Kept in its
+-- own RLS'd table rather than a column on organizations, which has no RLS
+-- (it isn't itself org-scoped data) and would otherwise expose this webhook
+-- URL to anything that ever reads that table broadly.
+CREATE TABLE notification_settings (
+    org_id             UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
+    slack_webhook_url  TEXT,
+    created_at         TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at         TIMESTAMPTZ NOT NULL DEFAULT now()
+);
+
 -- Named spend limits. Scoped to one account, or org-wide when account_id is
 -- NULL. Not scoped by team/tag — that needs tag data in spend_daily, which
 -- CUR ingestion doesn't capture yet (see services/cur/parser.py).
@@ -175,6 +186,8 @@ ALTER TABLE budgets         ENABLE ROW LEVEL SECURITY;
 ALTER TABLE budgets         FORCE ROW LEVEL SECURITY;
 ALTER TABLE schedules       ENABLE ROW LEVEL SECURITY;
 ALTER TABLE schedules       FORCE ROW LEVEL SECURITY;
+ALTER TABLE notification_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE notification_settings FORCE ROW LEVEL SECURITY;
 
 CREATE POLICY org_isolation_users ON users
     USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
@@ -209,6 +222,10 @@ CREATE POLICY org_isolation_budgets ON budgets
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
 
 CREATE POLICY org_isolation_schedules ON schedules
+    USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
+    WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
+
+CREATE POLICY org_isolation_notification_settings ON notification_settings
     USING (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid)
     WITH CHECK (org_id = NULLIF(current_setting('app.current_org_id', true), '')::uuid);
 

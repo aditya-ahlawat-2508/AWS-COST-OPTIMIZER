@@ -100,6 +100,17 @@ class Subscription(Base):
     updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
 
 
+class NotificationSettings(Base):
+    __tablename__ = "notification_settings"
+
+    org_id: Mapped[uuid.UUID] = mapped_column(
+        UUID(as_uuid=True), ForeignKey("organizations.id"), primary_key=True
+    )
+    slack_webhook_url: Mapped[Optional[str]] = mapped_column(String, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(server_default=func.now())
+    updated_at: Mapped[datetime] = mapped_column(server_default=func.now())
+
+
 class Schedule(Base):
     __tablename__ = "schedules"
 

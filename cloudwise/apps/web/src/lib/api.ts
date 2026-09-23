@@ -195,6 +195,15 @@ export const api = {
 
   listAnomalies: (token: string) => request<Anomaly[]>("/anomalies", token),
 
+  getSlackSettings: (token: string) => request<{ slack_webhook_url: string | null }>("/notifications/slack", token),
+  setSlackWebhook: (token: string, slack_webhook_url: string | null) =>
+    request<{ slack_webhook_url: string | null }>("/notifications/slack", token, {
+      method: "PUT",
+      body: JSON.stringify({ slack_webhook_url }),
+    }),
+  sendSlackDigestNow: (token: string) =>
+    request<{ sent: boolean }>("/notifications/slack/send-digest", token, { method: "POST" }),
+
   listSchedules: (token: string) => request<Schedule[]>("/schedules", token),
   createSchedule: (
     token: string,
