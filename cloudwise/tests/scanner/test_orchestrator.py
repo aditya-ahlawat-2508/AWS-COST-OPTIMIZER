@@ -44,7 +44,7 @@ def test_scan_writes_findings_for_idle_instance():
     with org_scoped_session(org_id=str(org_id)) as session:
         account = session.get(AWSAccount, account_id)
         result = run_scan_for_account(
-            session, org_id, account, region="us-east-1", pricing_client=fake_pricing, boto_session=boto_session
+            session, org_id, account, regions=["us-east-1"], pricing_client=fake_pricing, boto_session=boto_session
         )
 
     # No CloudWatch metrics published in the moto sandbox means avg_cpu
@@ -92,7 +92,7 @@ def test_scan_persists_finding_evidence_and_fix():
     with org_scoped_session(org_id=str(org_id)) as session:
         account = session.get(AWSAccount, account_id)
         result = run_scan_for_account(
-            session, org_id, account, region="us-east-1", pricing_client=fake_pricing, boto_session=boto_session
+            session, org_id, account, regions=["us-east-1"], pricing_client=fake_pricing, boto_session=boto_session
         )
     assert result["findings_written"] == 1
 
@@ -136,7 +136,7 @@ def test_rescan_preserves_user_dismissed_status():
     with org_scoped_session(org_id=str(org_id)) as session:
         account = session.get(AWSAccount, account_id)
         run_scan_for_account(
-            session, org_id, account, region="us-east-1", pricing_client=fake_pricing, boto_session=boto_session
+            session, org_id, account, regions=["us-east-1"], pricing_client=fake_pricing, boto_session=boto_session
         )
 
     with org_scoped_session(org_id=str(org_id)) as session:
@@ -147,7 +147,7 @@ def test_rescan_preserves_user_dismissed_status():
     with org_scoped_session(org_id=str(org_id)) as session:
         account = session.get(AWSAccount, account_id)
         run_scan_for_account(
-            session, org_id, account, region="us-east-1", pricing_client=fake_pricing, boto_session=boto_session
+            session, org_id, account, regions=["us-east-1"], pricing_client=fake_pricing, boto_session=boto_session
         )
 
     with org_scoped_session(org_id=str(org_id)) as session:

@@ -35,6 +35,7 @@ class AWSAccountOut(BaseModel):
 class ScanResult(BaseModel):
     resources_scanned: int
     findings_written: int
+    regions_scanned: List[str]
 
 
 class FindingOut(BaseModel):
