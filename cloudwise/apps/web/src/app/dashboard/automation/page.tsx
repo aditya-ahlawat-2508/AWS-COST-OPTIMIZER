@@ -129,7 +129,7 @@ export default function AutomationPage() {
 
       {error && <div className="rounded-md border border-border bg-surface p-3 text-sm text-danger">{error}</div>}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="overflow-hidden card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted">
@@ -255,7 +255,7 @@ export default function AutomationPage() {
           </div>
         )}
 
-        <div className="overflow-hidden rounded-lg border border-border bg-surface">
+        <div className="overflow-hidden card">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-border text-left text-xs text-muted">

@@ -48,12 +48,12 @@ export default function DemoOverviewPage() {
         <KpiCard label="Open findings" value={String(openFindings.length)} />
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="card p-4">
         <div className="mb-2 text-sm font-medium">Spend by service</div>
         <SpendChart data={spend?.breakdown ?? []} />
       </div>
 
-      <div className="rounded-lg border border-border bg-surface">
+      <div className="card">
         <div className="flex items-center justify-between border-b border-border px-4 py-3">
           <div className="text-sm font-medium">Top recommendations</div>
           <Link href="/demo/findings" className="text-xs text-accent hover:underline">

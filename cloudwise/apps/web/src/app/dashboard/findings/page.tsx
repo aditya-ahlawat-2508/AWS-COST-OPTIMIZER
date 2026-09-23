@@ -39,7 +39,7 @@ export default function FindingsPage() {
       <h1 className="text-xl font-semibold">Recommendations</h1>
 
       <div className="flex items-center justify-between">
-        <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+        <div className="flex gap-1 card p-1">
           {TABS.map((t) => (
             <button
               key={t.key}
@@ -65,7 +65,7 @@ export default function FindingsPage() {
         </select>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="overflow-hidden card">
         <FindingsTable findings={filtered} detailHref={(f) => `/dashboard/findings/${f.id}`} />
       </div>
     </div>

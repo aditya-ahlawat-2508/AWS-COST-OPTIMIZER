@@ -52,7 +52,7 @@ export default function AccountsPage() {
 
       {message && <div className="rounded-md border border-border bg-surface p-3 text-sm">{message}</div>}
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="overflow-hidden card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted">

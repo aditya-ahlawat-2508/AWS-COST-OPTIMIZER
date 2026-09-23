@@ -24,7 +24,7 @@ export default function AuditLogPage() {
       <p className="text-sm text-muted">
         Every automated action (services/actions/executor.py) and its outcome, success or failure.
       </p>
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="overflow-hidden card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted">

@@ -52,14 +52,14 @@ export default function AnomaliesPage() {
           comparison, not a model (see services/analytics/anomalies.py).
         </p>
         {anomalies.length === 0 ? (
-          <div className="rounded-lg border border-border bg-surface p-4 text-sm text-muted">
+          <div className="card p-4 text-sm text-muted">
             No anomalies detected. Needs at least 21 days of spend history per service to compare
             against.
           </div>
         ) : (
           <div className="space-y-3">
             {anomalies.map((a) => (
-              <div key={a.service} className="rounded-lg border border-border bg-surface p-4">
+              <div key={a.service} className="card p-4">
                 <div className="flex items-center justify-between">
                   <span className="text-sm font-medium">{a.service}</span>
                   <span className="text-sm font-semibold text-danger tabular-nums">
@@ -106,7 +106,7 @@ export default function AnomaliesPage() {
           {budgets.map((b) => {
             const pct = Math.min(100, Math.round((b.spent_this_month / b.monthly_limit_usd) * 100));
             return (
-              <div key={b.id} className="rounded-lg border border-border bg-surface p-4">
+              <div key={b.id} className="card p-4">
                 <div className="flex items-center justify-between text-sm">
                   <span className="font-medium">{b.name}</span>
                   <span className="tabular-nums text-muted">

@@ -57,7 +57,7 @@ export default function ConnectAwsPage() {
       </ol>
 
       {step === 1 && (
-        <div className="space-y-4 rounded-lg border border-border bg-surface p-6">
+        <div className="space-y-4 card p-6">
           <p className="text-sm text-muted">
             This deploys a read-only IAM role (see{" "}
             <a href="/security" className="text-accent hover:underline">
@@ -87,7 +87,7 @@ export default function ConnectAwsPage() {
       )}
 
       {step === 2 && (
-        <div className="space-y-4 rounded-lg border border-border bg-surface p-6">
+        <div className="space-y-4 card p-6">
           <div>
             <label className="text-xs text-muted">AWS Account ID (12 digits)</label>
             <input
@@ -127,7 +127,7 @@ export default function ConnectAwsPage() {
       )}
 
       {step === 3 && (
-        <div className="space-y-4 rounded-lg border border-border bg-surface p-6 text-center">
+        <div className="space-y-4 card p-6 text-center">
           <div className="text-2xl">✓</div>
           <p className="text-sm">{scanResult ?? "Scanning…"}</p>
           <button

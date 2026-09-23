@@ -32,7 +32,7 @@ export default function CostExplorerPage() {
       <div className="flex items-center justify-between">
         <h1 className="text-xl font-semibold">Cost explorer</h1>
         <div className="flex items-center gap-2 text-sm">
-          <div className="flex gap-1 rounded-lg border border-border bg-surface p-1">
+          <div className="flex gap-1 card p-1">
             {(["unblended", "amortized"] as const).map((v) => (
               <button
                 key={v}
@@ -60,7 +60,7 @@ export default function CostExplorerPage() {
         </div>
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="card p-4">
         <div className="text-sm text-muted">Total ({view})</div>
         <div className="text-2xl font-semibold tabular-nums">{spend ? formatMoney(spend.total_cost) : "—"}</div>
         <div className="mt-4">
@@ -68,7 +68,7 @@ export default function CostExplorerPage() {
         </div>
       </div>
 
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="overflow-hidden card">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-border text-left text-xs text-muted">

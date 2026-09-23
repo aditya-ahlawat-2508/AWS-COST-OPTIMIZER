@@ -75,7 +75,7 @@ export default function SettingsPage() {
     <div className="max-w-2xl space-y-8">
       <h1 className="text-xl font-semibold">Settings</h1>
 
-      <section className="rounded-lg border border-border bg-surface p-4">
+      <section className="card p-4">
         <h2 className="text-sm font-medium">Plan</h2>
         {entitlement ? (
           <div className="mt-2 text-sm text-muted">
@@ -115,7 +115,7 @@ export default function SettingsPage() {
         </div>
       </section>
 
-      <section className="rounded-lg border border-border bg-surface p-4">
+      <section className="card p-4">
         <h2 className="text-sm font-medium">Slack digest</h2>
         <p className="mt-1 text-sm text-muted">
           Paste an Incoming Webhook URL to get a weekly summary of spend and open findings.

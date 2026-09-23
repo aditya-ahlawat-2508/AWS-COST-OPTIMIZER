@@ -58,7 +58,7 @@ export default function OverviewPage() {
 
         {loading && <div className="text-sm text-muted">Loading…</div>}
         {error && (
-          <div className="rounded-lg border border-border bg-surface p-4 text-sm text-muted">
+          <div className="card p-4 text-sm text-muted">
             {error}{" "}
             <Link href="/dashboard/connect" className="text-accent hover:underline">
               Connect an account
@@ -79,12 +79,12 @@ export default function OverviewPage() {
           <KpiCard label="Open findings" value={String(openFindings.length)} />
         </div>
 
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="card p-4">
           <div className="mb-2 text-sm font-medium">Spend by service</div>
           <SpendChart data={spend?.breakdown ?? []} />
         </div>
 
-        <div className="rounded-lg border border-border bg-surface">
+        <div className="card">
           <div className="flex items-center justify-between border-b border-border px-4 py-3">
             <div className="text-sm font-medium">Top recommendations</div>
             <Link href="/dashboard/findings" className="text-xs text-accent hover:underline">

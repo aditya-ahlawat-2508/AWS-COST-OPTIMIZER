@@ -74,7 +74,7 @@ export default function FindingDetailPage({ params }: PageProps<"/dashboard/find
         <StatusBadge status={finding.status} />
       </div>
 
-      <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="card p-4">
         <div className="text-sm text-muted">Monthly savings</div>
         <div className="mt-1 text-2xl font-semibold tabular-nums">{formatMoney(finding.monthly_savings)}</div>
         <p className="mt-1 text-xs text-muted">
@@ -83,13 +83,13 @@ export default function FindingDetailPage({ params }: PageProps<"/dashboard/find
       </div>
 
       {fix && (
-        <div className="rounded-lg border border-border bg-surface p-4">
+        <div className="card p-4">
           <div className="text-sm font-medium">Suggested fix</div>
           <p className="mt-1 text-sm text-muted">{fix}</p>
         </div>
       )}
 
-      <div className="rounded-lg border border-border bg-surface p-4">
+      <div className="card p-4">
         <div className="text-sm font-medium">Evidence</div>
         <pre className="mt-2 overflow-x-auto rounded-md bg-background p-3 text-xs text-muted">
           {JSON.stringify(finding.evidence, null, 2)}

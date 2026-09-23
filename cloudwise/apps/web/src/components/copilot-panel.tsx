@@ -38,7 +38,7 @@ export function CopilotPanel({ getToken }: { getToken: () => Promise<string | nu
   }
 
   return (
-    <div className="flex h-full flex-col rounded-lg border border-border bg-surface">
+    <div className="flex h-full flex-col card">
       <div className="flex items-center gap-2 border-b border-border px-4 py-3 text-sm font-medium">
         <Sparkles size={16} className="text-accent" />
         AI copilot

@@ -14,7 +14,7 @@ export default function DemoFindingsPage() {
   return (
     <div className="space-y-4">
       <h1 className="text-xl font-semibold">Recommendations</h1>
-      <div className="overflow-hidden rounded-lg border border-border bg-surface">
+      <div className="overflow-hidden card">
         <FindingsTable findings={findings} />
       </div>
     </div>

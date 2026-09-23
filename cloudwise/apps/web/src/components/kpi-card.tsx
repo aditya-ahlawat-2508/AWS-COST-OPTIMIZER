@@ -12,7 +12,7 @@ export function KpiCard({
   hintTone?: "muted" | "success" | "danger";
 }) {
   return (
-    <div className="rounded-lg border border-border bg-surface p-4">
+    <div className="card p-4 transition-shadow hover:shadow-md">
       <div className="text-sm text-muted">{label}</div>
       <div className="mt-1 text-2xl font-semibold tabular-nums">{value}</div>
       {hint && (

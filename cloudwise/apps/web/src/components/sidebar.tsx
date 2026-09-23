@@ -13,6 +13,7 @@ import {
   Server,
   ScrollText,
   Settings,
+  Cloud,
 } from "lucide-react";
 
 const NAV_ITEMS = [
@@ -33,10 +34,15 @@ export function Sidebar({ orgLabel, footer }: { orgLabel?: string; footer?: Reac
   return (
     <aside className="flex w-60 shrink-0 flex-col border-r border-border bg-surface">
       <div className="border-b border-border px-4 py-4">
-        <div className="text-lg font-semibold">CloudWise</div>
-        {orgLabel && <div className="mt-1 truncate text-xs text-muted">{orgLabel}</div>}
+        <div className="flex items-center gap-2">
+          <div className="flex h-6 w-6 items-center justify-center rounded-md bg-accent text-accent-foreground">
+            <Cloud size={14} />
+          </div>
+          <span className="text-base font-semibold">CloudWise</span>
+        </div>
+        {orgLabel && <div className="mt-1.5 truncate text-xs text-muted">{orgLabel}</div>}
       </div>
-      <nav className="flex-1 space-y-1 p-2">
+      <nav className="flex-1 space-y-0.5 p-2">
         {NAV_ITEMS.map((item) => {
           const isActive = pathname === item.href.split("#")[0];
           const Icon = item.icon;
@@ -45,11 +51,13 @@ export function Sidebar({ orgLabel, footer }: { orgLabel?: string; footer?: Reac
               key={item.href}
               href={item.href}
               className={cn(
-                "flex items-center gap-2 rounded-md px-3 py-2 text-sm transition-colors",
-                isActive ? "bg-accent/15 text-accent" : "text-muted hover:bg-surface-2 hover:text-foreground"
+                "flex items-center gap-2.5 rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                isActive
+                  ? "bg-accent/15 text-accent"
+                  : "text-muted hover:bg-surface-2 hover:text-foreground"
               )}
             >
-              <Icon size={16} />
+              <Icon size={16} className={isActive ? "text-accent" : "text-muted"} />
               {item.label}
             </Link>
           );
