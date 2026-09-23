@@ -162,6 +162,11 @@ export const api = {
       method: "POST",
       body: JSON.stringify({ tier, success_url: successUrl, cancel_url: cancelUrl }),
     }),
+  createRazorpayCheckout: (token: string, tier: "starter" | "growth") =>
+    request<{ checkout_url: string }>("/billing/razorpay/checkout", token, {
+      method: "POST",
+      body: JSON.stringify({ tier }),
+    }),
 
   copilotChat: (token: string, message: string) =>
     request<CopilotResponse>("/copilot/chat", token, {

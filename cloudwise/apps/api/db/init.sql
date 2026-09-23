@@ -82,14 +82,19 @@ CREATE TABLE change_requests (
 -- app/billing.py:get_entitlement, which treats a missing subscription the
 -- same as an explicit free-tier one rather than erroring.
 CREATE TABLE subscriptions (
-    org_id                 UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
-    tier                   TEXT NOT NULL DEFAULT 'free' CHECK (tier IN ('free', 'starter', 'growth')),
-    status                 TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'trialing', 'past_due', 'canceled')),
-    stripe_customer_id     TEXT UNIQUE,
-    stripe_subscription_id TEXT UNIQUE,
-    current_period_end     TIMESTAMPTZ,
-    created_at             TIMESTAMPTZ NOT NULL DEFAULT now(),
-    updated_at             TIMESTAMPTZ NOT NULL DEFAULT now()
+    org_id                   UUID PRIMARY KEY REFERENCES organizations(id) ON DELETE CASCADE,
+    tier                     TEXT NOT NULL DEFAULT 'free' CHECK (tier IN ('free', 'starter', 'growth')),
+    status                   TEXT NOT NULL DEFAULT 'active' CHECK (status IN ('active', 'trialing', 'past_due', 'canceled')),
+    -- Which of the two providers billed this org last. USD customers use
+    -- Stripe, INR customers use Razorpay (blueprint Section 03) — an org
+    -- only ever has one active provider at a time, not both.
+    provider                 TEXT NOT NULL DEFAULT 'stripe' CHECK (provider IN ('stripe', 'razorpay')),
+    stripe_customer_id       TEXT UNIQUE,
+    stripe_subscription_id   TEXT UNIQUE,
+    razorpay_subscription_id TEXT UNIQUE,
+    current_period_end       TIMESTAMPTZ,
+    created_at               TIMESTAMPTZ NOT NULL DEFAULT now(),
+    updated_at               TIMESTAMPTZ NOT NULL DEFAULT now()
 );
 
 -- Normalized daily spend, aggregated from CUR/Data Exports by

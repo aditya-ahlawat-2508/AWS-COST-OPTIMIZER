@@ -8,6 +8,7 @@ export default function SettingsPage() {
   const { getToken } = useAuth();
   const [entitlement, setEntitlement] = useState<Entitlement | null>(null);
   const [checkoutBusy, setCheckoutBusy] = useState<string | null>(null);
+  const [currency, setCurrency] = useState<"usd" | "inr">("usd");
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
@@ -25,12 +26,15 @@ export default function SettingsPage() {
     try {
       const token = await getToken();
       if (!token) return;
-      const { checkout_url } = await api.createCheckout(
-        token,
-        tier,
-        `${window.location.origin}/dashboard/settings?upgraded=1`,
-        `${window.location.origin}/dashboard/settings`
-      );
+      const { checkout_url } =
+        currency === "inr"
+          ? await api.createRazorpayCheckout(token, tier)
+          : await api.createCheckout(
+              token,
+              tier,
+              `${window.location.origin}/dashboard/settings?upgraded=1`,
+              `${window.location.origin}/dashboard/settings`
+            );
       window.location.href = checkout_url;
     } catch (err) {
       setError(
@@ -61,7 +65,15 @@ export default function SettingsPage() {
           <div className="mt-2 text-sm text-muted">Loading…</div>
         )}
         {error && <div className="mt-2 text-sm text-danger">{error}</div>}
-        <div className="mt-3 flex gap-2">
+        <div className="mt-3 flex items-center gap-2">
+          <select
+            value={currency}
+            onChange={(e) => setCurrency(e.target.value as "usd" | "inr")}
+            className="rounded-md border border-border bg-background px-2 py-1.5 text-sm"
+          >
+            <option value="usd">Pay in USD (Stripe)</option>
+            <option value="inr">Pay in INR (Razorpay)</option>
+          </select>
           <button
             onClick={() => upgrade("starter")}
             disabled={checkoutBusy !== null}

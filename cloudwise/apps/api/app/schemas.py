@@ -116,6 +116,10 @@ class CheckoutResponse(BaseModel):
     checkout_url: str
 
 
+class RazorpayCheckoutRequest(BaseModel):
+    tier: str = Field(pattern=r"^(starter|growth)$")
+
+
 class EntitlementOut(BaseModel):
     tier: str
     status: str
