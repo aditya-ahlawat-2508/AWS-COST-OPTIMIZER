@@ -22,6 +22,11 @@ export default function RootLayout({ children }: LayoutProps<"/">) {
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} h-full antialiased`}
+      // A password-manager/browser extension injects attributes like
+      // data-qb-installed onto <html> before React hydrates, which isn't
+      // anything our own code renders differently — suppress just this tag's
+      // hydration warning rather than the real mismatches elsewhere.
+      suppressHydrationWarning
     >
       <body className="min-h-full flex flex-col bg-background text-foreground">{children}</body>
     </html>
