@@ -1,10 +1,6 @@
 """Ties the scanner, rules engine, and pricing service together and persists
 the result. Cross-package coupling with apps/api's models, same as
 services/cur/loader.py — see that module's docstring for why.
-
-Only EC2 is wired up end-to-end so far (services/scanner/ec2.py); the other
-resource types services/rules already has detectors for (EBS, EIP, NAT, RDS)
-are the natural next collectors to add here, same pattern.
 """
 from typing import Any, Dict, Optional
 from uuid import UUID
@@ -14,7 +10,11 @@ from sqlalchemy.orm import Session
 
 from ..pricing.price_list import PriceListClient
 from ..rules import run_all
+from .ebs import collect_ebs_volumes
 from .ec2 import collect_ec2_instances
+from .eip import collect_elastic_ips
+from .nat_gateway import collect_nat_gateways
+from .rds import collect_rds_instances
 from .session import assume_scan_role
 
 DEFAULT_SCAN_REGION = "us-east-1"
@@ -35,8 +35,21 @@ def run_scan_for_account(
     from app.models import Finding  # local import: apps/api is a separate deployable
 
     session = boto_session or assume_scan_role(account.role_arn, account.external_id, region=region)
+
     ec2_instances = collect_ec2_instances(session, region, pricing_client=pricing_client)
-    context = {"ec2_instances": ec2_instances}
+    ebs_volumes = collect_ebs_volumes(session, region, pricing_client=pricing_client)
+    elastic_ips = collect_elastic_ips(session, region, pricing_client=pricing_client)
+    nat_gateways = collect_nat_gateways(session, region, pricing_client=pricing_client)
+    rds_instances = collect_rds_instances(session, region, pricing_client=pricing_client)
+
+    context = {
+        "ec2_instances": ec2_instances,
+        "ebs_volumes": ebs_volumes,
+        "elastic_ips": elastic_ips,
+        "nat_gateways": nat_gateways,
+        "rds_instances": rds_instances,
+    }
+    resources_scanned = sum(len(v) for v in context.values())
     findings = run_all(context)
 
     for finding in findings:
@@ -67,4 +80,4 @@ def run_scan_for_account(
         )
         db.execute(stmt)
 
-    return {"resources_scanned": len(ec2_instances), "findings_written": len(findings)}
+    return {"resources_scanned": resources_scanned, "findings_written": len(findings)}

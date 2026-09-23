@@ -50,7 +50,9 @@ def test_scan_writes_findings_for_idle_instance():
     # No CloudWatch metrics published in the moto sandbox means avg_cpu
     # defaults to 100 (assume busy), so idle_ec2 should NOT fire — and
     # non_prod_schedule needs an env tag, which this instance lacks too.
-    assert result["resources_scanned"] == 1
+    # resources_scanned counts the instance plus its auto-created root EBS
+    # volume (moto, like real EC2, creates one per instance).
+    assert result["resources_scanned"] == 2
     assert result["findings_written"] == 0
     with org_scoped_session(org_id=str(org_id)) as session:
         findings = session.execute(select(Finding).where(Finding.org_id == org_id)).scalars().all()
